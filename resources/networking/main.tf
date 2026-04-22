@@ -15,6 +15,7 @@ resource "azurerm_subnet" "SubNet_sa" {
   resource_group_name  = azurerm_resource_group.Web-Application_terraform.name
   virtual_network_name = azurerm_virtual_network.VNet_WebApplication_Terraform.name
   address_prefixes     = ["10.0.0.0/24"] 
+  service_endpoints = ["Microsoft.Storage"]
 }
 
 resource "azurerm_subnet" "SubNet_back" {

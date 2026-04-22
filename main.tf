@@ -1,4 +1,4 @@
-
+# 1. Llamada al modulo de networking
 module "Networking_Terraform"{
     source          = "./resources/networking"
     rg_name         = var.rg_name
@@ -8,5 +8,14 @@ module "Networking_Terraform"{
     subnet_front    = var.subnet_front
     subnet_sa       = var.subnet_sa
     vnet_range      = var.vnet_range 
+
+}
+
+# 2. Llamada al módulo de Storage
+module "Storage_Terraform" {
+  source   = "./resources/storage"
+  rg_name  = var.rg_name
+  location = var.location 
+  subnet_id = module.Networking_Terraform.subnet_sa_id
 
 }
