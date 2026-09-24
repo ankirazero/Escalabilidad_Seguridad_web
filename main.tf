@@ -1,21 +1,23 @@
-# 1. Llamada al modulo de networking
-module "Networking_Terraform"{
-    source          = "./resources/networking"
-    rg_name         = var.rg_name
-    location        = var.location
-    vnet_name       = var.vnet_name 
-    subnet_back     = var.subnet_back
-    subnet_front    = var.subnet_front
-    subnet_sa       = var.subnet_sa
-    vnet_range      = var.vnet_range 
-
+module "networking" {
+  source      = "./resources/networking"
+  environment = var.environment
 }
 
-# 2. Llamada al módulo de Storage
-module "Storage_Terraform" {
-  source   = "./resources/storage"
-  rg_name  = var.rg_name
-  location = var.location 
-  subnet_id = module.Networking_Terraform.subnet_sa_id
+module "security" {
+  source      = "./resources/security"
+  vpc_id      = module.networking.vpc_id
+  environment = var.environment
+}
 
+module "storage" {
+  source      = "./resources/storage"
+  environment = var.environment
+}
+
+module "compute" {
+  source            = "./resources/compute"
+  subnet_id         = module.networking.subnet_public_id
+  security_group_id = module.security.security_group_id
+  instance_type     = var.instance_type
+  environment       = var.environment
 }

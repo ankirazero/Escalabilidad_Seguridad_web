@@ -1,12 +1,10 @@
 
-output "storage_account_name" {
-  value = azurerm_storage_account.storageaccountweb.name
+output "bucket_id" {
+  value       = aws_s3_bucket.storage.id
+  description = "Nombre o ID del bucket S3"
 }
 
-output "storage_account_id" {
-  value = azurerm_storage_account.storageaccountweb.id
-}
-
-output "primary_blob_endpoint" {
-  value = azurerm_storage_account.storageaccountweb.primary_blob_endpoint
+output "bucket_arn" {
+  value       = aws_s3_bucket.storage.arn
+  description = "ARN del bucket S3"
 }

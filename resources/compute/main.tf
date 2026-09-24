@@ -3,80 +3,58 @@ variable "environment" {
   default = "dev"
 }
 
-variable "rg_name" {
-  type = string
-}
-
-variable "location" {
-  type = string
-}
-
 variable "subnet_id" {
   type        = string
-  description = "ID de la subred donde se desplegará la VM"
+  description = "ID de la subred frontal"
 }
 
-variable "network_security_group_id" {
+variable "security_group_id" {
   type        = string
-  description = "ID del NSG asociado a la interfaz de red"
+  description = "ID del Security Group"
 }
 
-resource "azurerm_public_ip" "pip" {
-  name                = "${var.environment}-pip"
-  resource_group_name = var.rg_name
-  location            = var.location
-  allocation_method   = "Dynamic"
+variable "instance_type" {
+  type        = string
+  default     = "t2.micro"
+  description = "Tipo de instancia EC2"
 }
 
-resource "azurerm_network_interface" "nic" {
-  name                = "${var.environment}-nic"
-  location            = var.location
-  resource_group_name = var.rg_name
+data "aws_ami" "amazon_linux" {
+  most_recent = true
+  owners      = ["amazon"]
 
-  ip_configuration {
-    name                          = "internal"
-    subnet_id                     = var.subnet_id
-    private_ip_address_allocation = "Dynamic"
-    public_ip_address_id          = azurerm_public_ip.pip.id
+  filter {
+    name   = "name"
+    values = ["amzn2-ami-hvm-*-x86_64-gp2"]
   }
 }
 
-resource "azurerm_network_interface_security_group_association" "nic_nsg" {
-  network_interface_id      = azurerm_network_interface.nic.id
-  network_security_group_id = var.network_security_group_id
-}
+resource "aws_instance" "web" {
+  ami                    = data.aws_ami.amazon_linux.id
+  instance_type          = var.instance_type
+  subnet_id              = var.subnet_id
+  vpc_security_group_ids = [var.security_group_id]
 
-resource "azurerm_linux_virtual_machine" "vm" {
-  name                = "${var.environment}-vm"
-  resource_group_name = var.rg_name
-  location            = var.location
-  size                = "Standard_B1s"
-  admin_username      = "azureuser"
-  network_interface_ids = [
-    azurerm_network_interface.nic.id,
-  ]
-
-  admin_password                  = "P@ssw0rd1234!"
-  disable_password_authentication = false
-
-  os_disk {
-    caching              = "ReadWrite"
-    storage_account_type = "Standard_LRS"
-  }
-
-  source_image_reference {
-    publisher = "Canonical"
-    offer     = "UbuntuServer"
-    sku       = "18.04-LTS"
-    version   = "latest"
-  }
+  user_data = <<-EOF
+              #!/bin/bash
+              yum update -y
+              yum install -y httpd
+              systemctl start httpd
+              systemctl enable httpd
+              echo "<h1>Desplegado en AWS - Escalabilidad y Seguridad Web</h1>" > /var/www/html/index.html
+              EOF
 
   tags = {
-    Environment = var.environment
+    Name = "${var.environment}-web-server"
   }
+}
+
+output "instance_id" {
+  value = aws_instance.web.id
 }
 
 output "public_ip" {
-  value = azurerm_public_ip.pip.ip_address
+  value = aws_instance.web.public_ip
 }
+
 

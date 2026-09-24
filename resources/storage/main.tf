@@ -1,21 +1,34 @@
-resource "azurerm_storage_account" "storageaccountweb" {
-  name                     = "storageaccountwebterra"
-  resource_group_name      = var.rg_name
-  location                 = var.location
-  account_tier             = "Standard"
-  account_replication_type = "LRS"
-  depends_on = [ var.rg_name ]
+variable "environment" {
+  type    = string
+  default = "dev"
+}
 
-  network_rules {
-    default_action             = "Deny"      
-    bypass                     = ["AzureServices"] 
-    virtual_network_subnet_ids = [var.subnet_id]
-    ip_rules                   = ["186.84.24.6"]
+variable "subnet_id" {
+  type        = string
+  description = "ID de la subred (opcional)"
+  default     = ""
+}
+
+resource "aws_s3_bucket" "storage" {
+  bucket = "storage-account-web-terraform-${var.environment}"
+
+  tags = {
+    Environment = var.environment
   }
 }
 
-resource "azurerm_storage_container" "tfstate" {
-  name                  = "save-tfstate"
-  storage_account_name  = azurerm_storage_account.storageaccountweb.name
-  container_access_type = "private" 
+resource "aws_s3_bucket_public_access_block" "block" {
+  bucket                  = aws_s3_bucket.storage.id
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+output "bucket_id" {
+  value = aws_s3_bucket.storage.id
+}
+
+output "bucket_arn" {
+  value = aws_s3_bucket.storage.arn
 }

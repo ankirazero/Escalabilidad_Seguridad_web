@@ -1,33 +1,89 @@
-resource "azurerm_resource_group" "Web-Application_terraform" {
-  name     = var.rg_name
-  location = var.location
+variable "environment" {
+  type    = string
+  default = "dev"
 }
 
-resource "azurerm_virtual_network" "VNet_WebApplication_Terraform" {
-  name                = var.vnet_name
-  location            = azurerm_resource_group.Web-Application_terraform.location
-  resource_group_name = azurerm_resource_group.Web-Application_terraform.name
-  address_space       = var.vnet_range
+resource "aws_vpc" "main" {
+  cidr_block           = "10.0.0.0/16"
+  enable_dns_hostnames = true
+  enable_dns_support   = true
+
+  tags = {
+    Name = "${var.environment}-vpc"
+  }
 }
 
-resource "azurerm_subnet" "SubNet_sa" {
-  name                 = var.subnet_sa 
-  resource_group_name  = azurerm_resource_group.Web-Application_terraform.name
-  virtual_network_name = azurerm_virtual_network.VNet_WebApplication_Terraform.name
-  address_prefixes     = ["10.0.0.0/24"] 
-  service_endpoints = ["Microsoft.Storage"]
+resource "aws_internet_gateway" "igw" {
+  vpc_id = aws_vpc.main.id
+
+  tags = {
+    Name = "${var.environment}-igw"
+  }
 }
 
-resource "azurerm_subnet" "SubNet_back" {
-  name                 = var.subnet_back
-  resource_group_name  = azurerm_resource_group.Web-Application_terraform.name
-  virtual_network_name = azurerm_virtual_network.VNet_WebApplication_Terraform.name
-  address_prefixes     = ["10.0.1.0/24"]
+# 1. Subred Front (Pública)
+resource "aws_subnet" "front" {
+  vpc_id                  = aws_vpc.main.id
+  cidr_block              = "10.0.0.0/24"
+  map_public_ip_on_launch = true
+
+  tags = {
+    Name = "${var.environment}-subnet-front"
+  }
 }
 
-resource "azurerm_subnet" "SubNet_front" {
-  name                 = var.subnet_front
-  resource_group_name  = azurerm_resource_group.Web-Application_terraform.name
-  virtual_network_name = azurerm_virtual_network.VNet_WebApplication_Terraform.name
-  address_prefixes     = ["10.0.2.0/24"]
+# 2. Subred Back (Privada)
+resource "aws_subnet" "back" {
+  vpc_id                  = aws_vpc.main.id
+  cidr_block              = "10.0.1.0/24"
+  map_public_ip_on_launch = false
+
+  tags = {
+    Name = "${var.environment}-subnet-back"
+  }
+}
+
+# 3. Subred Storage / SA (Privada)
+resource "aws_subnet" "sa" {
+  vpc_id                  = aws_vpc.main.id
+  cidr_block              = "10.0.2.0/24"
+  map_public_ip_on_launch = false
+
+  tags = {
+    Name = "${var.environment}-subnet-sa"
+  }
+}
+
+resource "aws_route_table" "public" {
+  vpc_id = aws_vpc.main.id
+
+  route {
+    cidr_block = "0.0.0.0/0"
+    gateway_id = aws_internet_gateway.igw.id
+  }
+
+  tags = {
+    Name = "${var.environment}-public-rt"
+  }
+}
+
+resource "aws_route_table_association" "front" {
+  subnet_id      = aws_subnet.front.id
+  route_table_id = aws_route_table.public.id
+}
+
+output "vpc_id" {
+  value = aws_vpc.main.id
+}
+
+output "subnet_front_id" {
+  value = aws_subnet.front.id
+}
+
+output "subnet_back_id" {
+  value = aws_subnet.back.id
+}
+
+output "subnet_sa_id" {
+  value = aws_subnet.sa.id
 }

@@ -3,62 +3,52 @@ variable "environment" {
   default = "dev"
 }
 
-variable "rg_name" {
-  type = string
+variable "vpc_id" {
+  type        = string
+  description = "ID de la VPC"
 }
 
-variable "location" {
-  type = string
-}
+resource "aws_security_group" "web_sg" {
+  name        = "${var.environment}-web-sg"
+  description = "Security Group para servidores web"
+  vpc_id      = var.vpc_id
 
-variable "security_group_name" {
-  type = string
-  default = "web-nsg"
-}
-
-resource "azurerm_network_security_group" "nsg" {
-  name                = var.security_group_name
-  location            = var.location
-  resource_group_name = var.rg_name
-
-  security_rule {
-    name                        = "HTTP"
-    priority                    = 100
-    direction                   = "Inbound"
-    access                      = "Allow"
-    protocol                    = "Tcp"
-    source_port_range           = "*"
-    destination_port_range      = "80"
-    source_address_prefix       = "*"
-    destination_address_prefix  = "*"
+  ingress {
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
   }
 
-  security_rule {
-    name                        = "HTTPS"
-    priority                    = 105
-    direction                   = "Inbound"
-    access                      = "Allow"
-    protocol                    = "Tcp"
-    source_port_range           = "*"
-    destination_port_range      = "443"
-    source_address_prefix       = "*"
-    destination_address_prefix  = "*"
+  ingress {
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
   }
 
-  security_rule {
-    name                        = "SSH"
-    priority                    = 110
-    direction                   = "Inbound"
-    access                      = "Allow"
-    protocol                    = "Tcp"
-    source_port_range           = "*"
-    destination_port_range      = "22"
-    source_address_prefix       = "*"
-    destination_address_prefix  = "*"
+  ingress {
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name = "${var.environment}-web-sg"
   }
 }
 
 output "security_group_id" {
-  value = azurerm_network_security_group.nsg.id
+  value       = aws_security_group.web_sg.id
+  description = "ID del Security Group creado"
 }
+
 
